@@ -15,22 +15,22 @@ contract CompanyItem {
 
 //    owner: Address; // owner csn withdraw coins to address
     coowners: map<Address, Bool>; // rest only coowners dict; add owner to coowners
+    item_index: Int; // is timestamp
 
-    index: Int; // is timestamp
     is_initialized: Bool;
 //    owner_post: String?;
     description: String?;
 
-//    trusted_persons: map<Address, Bool>;
+    trusted_persons: map<Address, Bool>;
 
     created_at: Int?;
 
-    init(master_contract: Address, owner: Address, index: Int) {
+    init(master_contract: Address, item_index: Int) {
         require(sender() == master_contract, "not from master_contract");
         self.master_contract = master_contract;
 //        self.owner = owner;
-        self.coowners.set(owner, true);
-        self.index = index;
+//        self.coowners.set(owner, true);
+        self.item_index = item_index;
         self.is_initialized = false;
     }
 
@@ -107,8 +107,8 @@ contract CompanyItem {
             body: CreateContract {
                 company_address: myAddress(),
                 employee_address: msg.employee_address,
-                company_owner: self.owner,
-                company_index: self.index,
+//                company_owner: self.owner,
+                company_index: self.item_index,
                 contract_index: msg.contract_index
             }.toCell()
         });
@@ -208,7 +208,7 @@ contract CompanyItem {
     }
 
     fun requireOwner() {
-        nativeThrowUnless(132, self.coowners.get(sender()));
+        nativeThrowUnless(132, self.coowners.get(sender()) != null);
     }
 
     get fun trustedPersons(): map<Address, Bool> {
@@ -240,5 +240,9 @@ contract CompanyItem {
 
     get fun createdAt(): Int? { // test ++
         return self.created_at;
+    }
+
+    get fun itemIndex(): Int? { // test -- create several contracts; check that item index increment
+        return self.item_index;
     }
 }

@@ -14,6 +14,7 @@ contract CompanyMaster with Deployable, OwnableTransferable {
 
     owner: Address;
     index: Int;
+    next_item_index: Int as uint32 = 0;
 
     contract_master_address: Address?;
 
@@ -25,7 +26,7 @@ contract CompanyMaster with Deployable, OwnableTransferable {
     receive(msg: Company) {
         // check amount; test --
         // check company already exists; what to do
-        let company_init: StateInit = self.companyItemInit(sender(), msg.index);
+        let company_init: StateInit = self.companyItemInit(self.next_item_index);
         let msgValue: Int = context().value;
         msgValue = msgValue - (gasConsumption + minTonsForStorage);
 
@@ -54,7 +55,7 @@ contract CompanyMaster with Deployable, OwnableTransferable {
 //        DUMP
 //        dump(self.companyAddressByOwner(msg.company_owner!!, msg.index));
 //        dump(ctx.sender);
-        require(self.companyAddressByOwner(msg.company_owner!!, msg.company_index) == ctx.sender, "only company can call CreateContract method");
+        require(self.companyAddressByIndex(msg.company_index) == ctx.sender, "only company can call CreateContract method");
         // if change owner, function companyAddressByOwner not work right; ONLY INDEX!!!
         require(ctx.sender == msg.company_address, "you can not create contract for foreing company"); // test --
 
@@ -70,6 +71,7 @@ contract CompanyMaster with Deployable, OwnableTransferable {
                 //            mode: SendBounceIfActionFail,
                 body: msg.toCell()
             });
+            self.next_item_index = self.next_item_index + 1;
         } else {
             // return coins to sender
 //            nativeThrow(1);
@@ -79,12 +81,12 @@ contract CompanyMaster with Deployable, OwnableTransferable {
     }
 
 //    get fun companyItemInit(sender_address: Address, company_index: Int): StateInit {
-    get fun companyItemInit(sender_address: Address, company_index: Int): StateInit {
-        return initOf CompanyItem(myAddress(), sender_address, company_index); // duplicate this for checking that company is item of company master
+    get fun companyItemInit(next_item_index: Int): StateInit {
+        return initOf CompanyItem(myAddress(), next_item_index); // duplicate this for checking that company is item of company master
     }
 
-    get fun companyAddressByOwner(company_owner: Address, company_index: Int): Address {
-        let initCode: StateInit = self.companyItemInit(company_owner, company_index);
+    get fun companyAddressByIndex(company_index: Int): Address {
+        let initCode: StateInit = self.companyItemInit(company_index);
         return contractAddress(initCode);
     }
 
@@ -96,5 +98,9 @@ contract CompanyMaster with Deployable, OwnableTransferable {
 
     get fun contractMasterAddress(): Address? {
         return self.contract_master_address;
+    }
+
+    get fun nextItemIndex(): Int { // test --
+        return self.next_item_index;
     }
 }

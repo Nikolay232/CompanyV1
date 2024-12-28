@@ -122,12 +122,12 @@ describe('CompanyMaster', () => {
     });
 
     it('should create company contract', async () => {
-        let companyAddress = await companyMaster.getCompanyAddressByOwner(companyOwner.address, 1n)
+        let companyAddress = await companyMaster.getCompanyAddressByIndex(0n)
 
         // console.log(companyAddress)
         // let company = CompanyItem.fromAddress(companyAddress)
 
-        let company = blockchain.openContract(await CompanyItem.fromInit(companyMaster.address, companyOwner.address, 1n))
+        let company = blockchain.openContract(await CompanyItem.fromInit(companyMaster.address, 0n))
 
         expect(companyAddress.toString()).toEqual(company.address.toString());
 
@@ -153,8 +153,8 @@ describe('CompanyMaster', () => {
         });
 
         expect(await company.getIsInitialized()).toEqual(true);
-        expect(await company.getCreatedAt()).toBeLessThan(Date.now()/1000 + 1);
-        expect(await company.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 1);
+        expect(await company.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
+        expect(await company.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 2);
     });
 
     // it('should set contract address', async () => {

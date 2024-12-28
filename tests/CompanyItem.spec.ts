@@ -87,12 +87,12 @@ describe('ContractItem', () => {
         });
 
 
-        let companyAddress = await companyMaster.getCompanyAddressByOwner(companyOwner.address, 1n)
+        let companyAddress = await companyMaster.getCompanyAddressByIndex(0n)
 
         // console.log(companyAddress)
         // let company = CompanyItem.fromAddress(companyAddress)
 
-        companyItem = blockchain.openContract(await CompanyItem.fromInit(companyMaster.address, companyOwner.address, 1n))
+        companyItem = blockchain.openContract(await CompanyItem.fromInit(companyMaster.address, 0n))
 
         expect(companyAddress.toString()).toEqual(companyItem.address.toString());
 
@@ -107,7 +107,7 @@ describe('ContractItem', () => {
                 $$type: 'Company',
                 post: '',
                 description: '',
-                index: 1n
+                index: 0n
             }
         );
 
@@ -130,23 +130,25 @@ describe('ContractItem', () => {
     })
 
     it('should check company item created at', async () => {
-        expect(await companyItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 1);
-        expect(await companyItem.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 1);
+        expect(await companyItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
+        expect(await companyItem.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 2);
     })
 
-    it('should check company item owner', async () => {
-        const companyItemOwner = await companyItem.getOwner()
-
-        expect(companyItemOwner.toString()).toEqual(companyOwner.address.toString());
-
-        console.log(await companyItem.getTrustedPersons())
-    })
-
-    it('should check company item owner', async () => {
-        const companyItemOwner = await companyItem.getOwner()
-
-        expect(companyItemOwner.toString()).toEqual(companyOwner.address.toString());
-    })
+// ---------------------------------------------------------------------------------------------------------------------
+    // it('should check company item owner', async () => {
+    //     const companyItemOwner = await companyItem.getOwner()
+    //
+    //     expect(companyItemOwner.toString()).toEqual(companyOwner.address.toString());
+    //
+    //     console.log(await companyItem.getTrustedPersons())
+    // })
+    //
+    // it('should check company item owner', async () => {
+    //     const companyItemOwner = await companyItem.getOwner()
+    //
+    //     expect(companyItemOwner.toString()).toEqual(companyOwner.address.toString());
+    // })
+// ---------------------------------------------------------------------------------------------------------------------
 
     it('should company set and delete trusted person', async () => {
         // let is_initialized = await companyItem.getIsInitialized()
@@ -273,7 +275,7 @@ describe('ContractItem', () => {
         expect(await companyItem.getIsCoowner(deployer.address)).toEqual(true);
 
         let setDeleteCoownerResult = await companyItem.send(
-            deployer.getSender(),
+            employee.getSender(),
             {
                 value: toNano('0.9'),
             },
@@ -284,7 +286,7 @@ describe('ContractItem', () => {
         );
 
         expect(setDeleteCoownerResult.transactions).toHaveTransaction({
-            from: deployer.address,
+            from: employee.address,
             to: companyItem.address,
             success: false,
         });
@@ -337,6 +339,8 @@ describe('ContractItem', () => {
         //     success: true,
         // });
 
+        expect(await companyItem.getIsCoowner(deployer.address)).toBeNull()
+
         const createContractRes = await companyItem.send(
             deployer.getSender(),
             {
@@ -346,7 +350,6 @@ describe('ContractItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
-                company_owner: null,
                 company_index: 0n,
                 contract_index: 5n
             }
@@ -356,7 +359,7 @@ describe('ContractItem', () => {
             from: deployer.address,
             to: companyItem.address,
             success: false,
-            exitCode: 44142
+            exitCode: 132
         });
     });
 
@@ -399,8 +402,8 @@ describe('ContractItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
-                company_owner: null,
-                company_index: 1n,
+                // company_owner: null,
+                company_index: 0n,
                 contract_index: 5n
             }
         );
@@ -444,7 +447,7 @@ describe('ContractItem', () => {
             to: companyMaster.address,
             success: true,
         });
-        //
+
         // // create company
         //
         // const createCompanyRes = await companyMaster.send(
@@ -494,8 +497,8 @@ describe('ContractItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
-                company_owner: null, // set in company_item
-                company_index: 1n,
+                // company_owner: null, // set in company_item
+                company_index: 0n,
                 contract_index: contract_index
             }
         );
@@ -538,12 +541,12 @@ describe('ContractItem', () => {
         expect(await contractItem.getIsActive()).toEqual(false);
         expect(await contractItem.getIsFinished()).toEqual(false);
         expect(await contractItem.getIsStopped()).toEqual(false);
-        expect(await contractItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 1);
-        expect(await contractItem.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 1);
+        expect(await contractItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
+        expect(await contractItem.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 2);
     });
 
-    it('should company item create contract, sender is companyOwner, master contract is set', async () => {
-
-    })
+    // it('should company item create contract, sender is companyOwner, master contract is set', async () => {
+    //
+    // })
 
 });

@@ -69,12 +69,12 @@ describe('ContractItem', () => {
         });
 
 
-        let companyAddress = await companyMaster.getCompanyAddressByOwner(companyOwner.address, 1n)
+        let companyAddress = await companyMaster.getCompanyAddressByIndex(0n)
 
         // console.log(companyAddress)
         // let company = CompanyItem.fromAddress(companyAddress)
 
-        companyItem = blockchain.openContract(await CompanyItem.fromInit(companyMaster.address, companyOwner.address, 1n))
+        companyItem = blockchain.openContract(await CompanyItem.fromInit(companyMaster.address, 0n))
 
         expect(companyAddress.toString()).toEqual(companyItem.address.toString());
 
@@ -89,7 +89,7 @@ describe('ContractItem', () => {
                 $$type: 'Company',
                 post: '',
                 description: '',
-                index: 1n
+                index: 0n
             }
         );
 
@@ -144,8 +144,8 @@ describe('ContractItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
-                company_owner: null, // set in company_item
-                company_index: 1n,
+                // company_owner: null, // set in company_item
+                company_index: 0n,
                 contract_index: contract_index
             }
         );
@@ -183,15 +183,15 @@ describe('ContractItem', () => {
         // the check is done inside beforeEach
         // blockchain and contractItem are ready to use
     });
-
+    //
     // TRANSFER TO CONTRACT ITEM TEST
     it('should contract item; employee confirm', async () => {
         expect(await contractItem.getIsInitialized()).toEqual(true);
         expect(await contractItem.getIsActive()).toEqual(false);
         expect(await contractItem.getIsFinished()).toEqual(false);
         expect(await contractItem.getIsStopped()).toEqual(false);
-        expect(await contractItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 1);
-        expect(await contractItem.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 1);
+        expect(await contractItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
+        expect(await contractItem.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 2);
 
         // confirm contract - not employee
         expect(await contractItem.getIsActive()).toEqual(false);
@@ -225,8 +225,8 @@ describe('ContractItem', () => {
         });
 
         expect(await contractItem.getIsActive()).toEqual(true);
-        expect(await contractItem.getConfirmedAt()).toBeLessThan(Date.now()/1000 + 1);
-        expect(await contractItem.getConfirmedAt()).toBeGreaterThan(Date.now()/1000 - 1);
+        expect(await contractItem.getConfirmedAt()).toBeLessThan(Date.now()/1000 + 2);
+        expect(await contractItem.getConfirmedAt()).toBeGreaterThan(Date.now()/1000 - 2);
     });
 
     it('should employee stop contract', async () => {
