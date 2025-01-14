@@ -9,7 +9,7 @@ contract MasterContract with Deployable, Ownable {
     minTonsForStorage: Int = ton("0.1");
     gasConsumption: Int = ton("0.02");
 
-    owner: Address; // company_master; only owner con deploy contract
+    owner: Address; // company_master; only owner can deploy contract
     index: Int;
     company_master_address: Address?; // всё-таки нужен мастер контракт который будет создавать контракты (или нет), для проверки, что создание контракта может быть вызвано только из мастер компании, например, надо хранить аго адрес, для этого мастер контракт должен быть Deployable???
 
@@ -75,5 +75,25 @@ contract MasterContract with Deployable, Ownable {
         // only owner
         self.requireOwner();
         self.company_master_address = msg.company_master_address;
+    }
+
+    receive(msg: FinishEmployeeContract) { // test ++
+        // check balance
+        self.requireOwner(); // test ++
+
+        require(msg.employee_contract != null, "message employee_contract is null"); // test ++
+
+        let ctx: Context = context();
+        let msgValue: Int = context().value;
+        msgValue = msgValue - self.gasConsumption;
+
+        send(SendParameters{
+            to: msg.employee_contract!!,
+            value: msgValue,
+            bounce: false,
+            mode: SendIgnoreErrors,
+            //            mode: SendBounceIfActionFail,
+            body: msg.toCell()
+        });
     }
 }

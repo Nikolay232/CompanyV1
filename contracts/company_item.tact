@@ -15,7 +15,7 @@ contract CompanyItem {
 
 //    owner: Address; // owner csn withdraw coins to address
     coowners: map<Address, Bool>; // rest only coowners dict; add owner to coowners
-    item_index: Int; // is timestamp
+    item_index: Int; // is timestamp??
 
     is_initialized: Bool;
 //    owner_post: String?;
@@ -197,6 +197,22 @@ contract CompanyItem {
             bounce: false,
             mode: SendIgnoreErrors,
 //            mode: SendBounceIfActionFail,
+            body: msg.toCell()
+        });
+    }
+
+    receive(msg: CompanyComment) { // test ++
+        self.requireOwner(); // test ++
+
+        let msgValue: Int = context().value;
+        msgValue = msgValue - gasConsumption;
+
+        send(SendParameters{
+            to: msg.employee_contract!!,
+            value: msgValue,
+            bounce: false,
+            mode: SendIgnoreErrors,
+            //            mode: SendBounceIfActionFail,
             body: msg.toCell()
         });
     }

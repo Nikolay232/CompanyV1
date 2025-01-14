@@ -106,4 +106,68 @@ describe('MasterContract', () => {
             success: true,
         });
     });
+
+    it('should finish contract not contract owner', async () => {
+        const masterContractOwner = await masterContract.getOwner()
+
+        expect(masterContractOwner.toString()).toEqual(deployer.address.toString())
+
+        const finishEmployeeContractRes = await masterContract.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.005'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: companyMaster.address
+            }
+        );
+
+        expect(finishEmployeeContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: masterContract.address,
+            success: false,
+        });
+    });
+
+    it('should finish contract owner success and employee_contract is null', async () => {
+        const masterContractOwner = await masterContract.getOwner()
+
+        expect(masterContractOwner.toString()).toEqual(deployer.address.toString())
+
+
+        let finishEmployeeContractRes = await masterContract.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: null
+            }
+        );
+
+        expect(finishEmployeeContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: masterContract.address,
+            success: false,
+        });
+
+        finishEmployeeContractRes = await masterContract.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: companyMaster.address
+            }
+        );
+
+        expect(finishEmployeeContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: masterContract.address,
+            success: true,
+        });
+    });
 });

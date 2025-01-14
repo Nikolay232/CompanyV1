@@ -6,7 +6,7 @@ import {CompanyItem} from "../build/CompanyItem/tact_CompanyItem";
 import {CompanyMaster} from "../build/CompanyMaster/tact_CompanyMaster";
 import {MasterContract} from "../build/MasterContract/tact_MasterContract";
 
-describe('ContractItem', () => {
+describe('CompanyItem', () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
     let companyOwner: SandboxContract<TreasuryContract>;
@@ -538,7 +538,7 @@ describe('ContractItem', () => {
         // console.log(await contractItem.getIsInitialized());
 
         expect(await contractItem.getIsInitialized()).toEqual(true);
-        expect(await contractItem.getIsActive()).toEqual(false);
+        expect(await contractItem.getConfirmed()).toEqual(false);
         expect(await contractItem.getIsFinished()).toEqual(false);
         expect(await contractItem.getIsStopped()).toEqual(false);
         expect(await contractItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
@@ -549,4 +549,79 @@ describe('ContractItem', () => {
     //
     // })
 
+    it('should company finish contract', async () => {
+        let finishContractRes = await companyItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: companyItem.address,
+            }
+        );
+
+        expect(finishContractRes.transactions).toHaveTransaction({
+            from: employee.address,
+            to: companyItem.address,
+            success: false,
+            exitCode: 132
+        });
+
+        finishContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: companyItem.address,
+            }
+        );
+
+        expect(finishContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+    });
+
+    it('should company send employee contract comment', async () => {
+        let finishContractRes = await companyItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.5'),
+            },
+            {
+                $$type: 'CompanyComment',
+                comment: "string 1",
+                employee_contract: companyItem.address
+            }
+        );
+
+        expect(finishContractRes.transactions).toHaveTransaction({
+            from: employee.address,
+            to: companyItem.address,
+            success: false,
+            exitCode: 132
+        });
+
+        finishContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.5'),
+            },
+            {
+                $$type: 'CompanyComment',
+                comment: "string 2",
+                employee_contract: companyItem.address
+            }
+        );
+
+        expect(finishContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+    });
 });

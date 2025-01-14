@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import {Address, toNano} from '@ton/core';
-import { ContractItem } from '../wrappers/ContractItem';
+import {CompanyComment, ContractItem} from '../wrappers/ContractItem';
 import '@ton/test-utils';
 import {CompanyMaster} from "../build/CompanyMaster/tact_CompanyMaster";
 import {MasterContract} from "../build/MasterContract/tact_MasterContract";
@@ -187,14 +187,14 @@ describe('ContractItem', () => {
     // TRANSFER TO CONTRACT ITEM TEST
     it('should contract item; employee confirm', async () => {
         expect(await contractItem.getIsInitialized()).toEqual(true);
-        expect(await contractItem.getIsActive()).toEqual(false);
+        expect(await contractItem.getConfirmed()).toEqual(false);
         expect(await contractItem.getIsFinished()).toEqual(false);
         expect(await contractItem.getIsStopped()).toEqual(false);
         expect(await contractItem.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
         expect(await contractItem.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 2);
 
         // confirm contract - not employee
-        expect(await contractItem.getIsActive()).toEqual(false);
+        expect(await contractItem.getConfirmed()).toEqual(false);
 
         let confirmContractRes = await contractItem.send(
             deployer.getSender(),
@@ -209,7 +209,7 @@ describe('ContractItem', () => {
             success: false
         });
 
-        expect(await contractItem.getIsActive()).toEqual(false);
+        expect(await contractItem.getConfirmed()).toEqual(false);
 
         confirmContractRes = await contractItem.send(
             employee.getSender(),
@@ -224,7 +224,7 @@ describe('ContractItem', () => {
             success: true
         });
 
-        expect(await contractItem.getIsActive()).toEqual(true);
+        expect(await contractItem.getConfirmed()).toEqual(true);
         expect(await contractItem.getConfirmedAt()).toBeLessThan(Date.now()/1000 + 2);
         expect(await contractItem.getConfirmedAt()).toBeGreaterThan(Date.now()/1000 - 2);
     });
@@ -243,7 +243,7 @@ describe('ContractItem', () => {
             success: true
         });
 
-        expect(await contractItem.getIsActive()).toEqual(true);
+        expect(await contractItem.getConfirmed()).toEqual(true);
         expect(await contractItem.getIsStopped()).toEqual(false);
 
         let stopContractRes = await contractItem.send(
@@ -301,7 +301,7 @@ describe('ContractItem', () => {
             success: true
         });
 
-        expect(await contractItem.getIsActive()).toEqual(true);
+        expect(await contractItem.getConfirmed()).toEqual(true);
         expect(await contractItem.getIsStopped()).toEqual(false);
 
         let stopContractRes = await companyItem.send(
@@ -364,7 +364,7 @@ describe('ContractItem', () => {
             success: true
         });
 
-        expect(await contractItem.getIsActive()).toEqual(true);
+        expect(await contractItem.getConfirmed()).toEqual(true);
         expect(await contractItem.getIsFinished()).toEqual(false);
 
         let finishContractRes = await contractItem.send(
@@ -418,7 +418,7 @@ describe('ContractItem', () => {
             success: true
         });
 
-        expect(await contractItem.getIsActive()).toEqual(true);
+        expect(await contractItem.getConfirmed()).toEqual(true);
         expect(await contractItem.getIsFinished()).toEqual(false);
 
         let finishContractRes = await companyItem.send(
@@ -462,5 +462,352 @@ describe('ContractItem', () => {
 
         expect(await contractItem.getIsFinished()).toEqual(true);
     });
+
+    it('should master contract finish contract', async () => {
+        let confirmContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            'confirm'
+        );
+        expect(confirmContractRes.transactions).toHaveTransaction({
+            from: employee.address,
+            to: contractItem.address,
+            success: true
+        });
+
+        expect(await contractItem.getConfirmed()).toEqual(true);
+        expect(await contractItem.getIsFinished()).toEqual(false);
+
+        let finishContractRes = await contractMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: contractItem.address
+            }
+        );
+
+        expect(finishContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: contractMaster.address,
+            success: true
+        });
+        expect(finishContractRes.transactions).toHaveTransaction({
+            from: contractMaster.address,
+            to: contractItem.address,
+            success: true
+        });
+
+        expect(await contractItem.getIsFinished()).toEqual(true);
+    });
+
+    it('should send comment contract; not company or employee', async () => {
+        let confirmContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            'confirm'
+        );
+        expect(confirmContractRes.transactions).toHaveTransaction({
+            from: employee.address,
+            to: contractItem.address,
+            success: true
+        });
+
+        expect(await contractItem.getConfirmed()).toEqual(true);
+        expect(await contractItem.getIsFinished()).toEqual(false);
+        expect(await contractItem.getIsStopped()).toEqual(false);
+
+        let commentContractRes = await contractItem.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CompanyComment',
+                comment: "comment1",
+                employee_contract: null
+            }
+        );
+
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: contractItem.address,
+            success: false,
+            exitCode: 24360,
+        });
+
+        expect(await contractItem.getCompanyComment()).toBeNull();
+
+        commentContractRes = await contractItem.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'EmployeeComment',
+                comment: "comment2"
+            }
+        );
+
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: contractItem.address,
+            success: false,
+            exitCode: 28860,
+        });
+
+        expect(await contractItem.getEmployeeComment()).toBeNull();
+    });
+
+    it('should send comment contract; company; contract is not stopped or finished', async () => {
+        let confirmContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            'confirm'
+        );
+
+        expect(await contractItem.getConfirmed()).toEqual(true);
+        expect(await contractItem.getIsFinished()).toEqual(false);
+        expect(await contractItem.getIsStopped()).toEqual(false);
+
+        let commentContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CompanyComment',
+                comment: "comment 1",
+                employee_contract: contractItem.address
+            }
+        );
+
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: contractItem.address,
+            success: false,
+            exitCode: 55927
+        });
+
+        expect(await contractItem.getCompanyComment()).toBeNull();
+    });
+
+    it('should send comment contract; company; contract is stopped', async () => {
+        let confirmContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            'confirm'
+        );
+
+        let stopContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'StopEmployeeContract',
+                employee_contract: null,
+                reason: "Stop_reason",
+            }
+        );
+
+        expect(await contractItem.getConfirmed()).toEqual(true);
+        expect(await contractItem.getIsFinished()).toEqual(false);
+        expect(await contractItem.getIsStopped()).toEqual(true);
+
+        expect(await contractItem.getCompanyComment()).toBeNull();
+
+        let commentContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CompanyComment',
+                comment: "comment 1",
+                employee_contract: contractItem.address
+            }
+        );
+
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: contractItem.address,
+            success: true,
+        });
+
+        expect(await contractItem.getCompanyComment()).toEqual("comment 1");
+    });
+
+    it('should send comment contract; company; contract is finished', async () => {
+        let confirmContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            'confirm'
+        );
+
+        let stopContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: null,
+            }
+        );
+
+        expect(await contractItem.getConfirmed()).toEqual(true);
+        expect(await contractItem.getIsFinished()).toEqual(true);
+        expect(await contractItem.getIsStopped()).toEqual(false);
+
+        expect(await contractItem.getCompanyComment()).toBeNull();
+
+        let commentContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CompanyComment',
+                comment: "comment 1",
+                employee_contract: contractItem.address
+            }
+        );
+
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: contractItem.address,
+            success: true,
+        });
+
+        expect(await contractItem.getCompanyComment()).toEqual("comment 1");
+    });
+
+    it('should send comment contract; employee; contract is stopped', async () => {
+        let confirmContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            'confirm'
+        );
+
+        let stopContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'StopEmployeeContract',
+                employee_contract: null,
+                reason: "Stop_reason",
+            }
+        );
+
+        expect(await contractItem.getConfirmed()).toEqual(true);
+        expect(await contractItem.getIsFinished()).toEqual(false);
+        expect(await contractItem.getIsStopped()).toEqual(true);
+
+        expect(await contractItem.getEmployeeComment()).toBeNull();
+
+        let commentContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'EmployeeComment',
+                comment: "comment 3",
+            }
+        );
+
+        // expect(commentContractRes.transactions).toHaveTransaction({
+        //     from: employee.address,
+        //     to: companyItem.address,
+        //     success: true,
+        // });
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: employee.address,
+            to: contractItem.address,
+            success: true,
+        });
+
+        expect(await contractItem.getEmployeeComment()).toEqual("comment 3");
+    });
+
+    it('should send comment contract; company; contract is finished', async () => {
+        let confirmContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            'confirm'
+        );
+
+        let stopContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'FinishEmployeeContract',
+                employee_contract: null,
+            }
+        );
+
+        expect(await contractItem.getConfirmed()).toEqual(true);
+        expect(await contractItem.getIsFinished()).toEqual(true);
+        expect(await contractItem.getIsStopped()).toEqual(false);
+
+        expect(await contractItem.getEmployeeComment()).toBeNull();
+
+        let commentContractRes = await contractItem.send(
+            employee.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'EmployeeComment',
+                comment: "comment 4",
+            }
+        );
+
+        expect(commentContractRes.transactions).toHaveTransaction({
+            from: employee.address,
+            to: contractItem.address,
+            success: true,
+        });
+
+        expect(await contractItem.getEmployeeComment()).toEqual("comment 4");
+    });
+
+
 
 });

@@ -6,16 +6,17 @@ contract ContractItem {
     master_contract: Address;
 
     company_address: Address;
+    // HR_address: Address;???
     employee_address: Address;
     // employee_telegram_id
     // index ???
-    index: Int;
+    index: Int; // timestamp??
     owner: Address?;
 
     company_comment: String?;
     employee_comment: String?;
 
-    is_active: Bool = false; // after employee confirm, become true
+    confirmed: Bool = false; // after employee confirm, become true
     confirmed_at : Int?;
     is_initialized: Bool = false;
     created_at: Int?;
@@ -68,46 +69,61 @@ contract ContractItem {
         // test success ++
         require(sender() == self.employee_address, "only employer can confirm contract");
         self.confirmed_at = now();
-        self.is_active = true;
+        self.confirmed = true;
     }
 
-    receive(msg: CompanyComment) { // test --
-        // after contract finished
-        require(sender() == self.company_address, "only company can leave company comment");
+    receive(msg: CompanyComment) { // test ++
+        // check comment length ??
+
+        // after contract finished or stopped
+        require(sender() == self.company_address, "only company can leave company comment"); // test ++
+        require(self.is_stopped || self.is_finished, "contract is active"); // test ++
         self.company_comment = msg.comment;
     }
 
+    get fun companyComment(): String? {
+        return self.company_comment;
+    }
+
     receive(msg: EmployeeComment) { // test --
-        // after contract finished
-        require(sender() == self.employee_address, "only employee can leave employee comment");
+        // check comment length
+
+        // after contract finished or stopped
+        require(sender() == self.employee_address, "only employee can leave employee comment"); // test ++
+        require(self.is_stopped || self.is_finished, "contract is active"); // test ++
         self.employee_comment = msg.comment;
     }
 
-    get fun companyAddress(): Address { // test ++
+    get fun employeeComment(): String? {
+        return self.employee_comment;
+    }
 
+    get fun companyAddress(): Address { // test --
         return self.company_address;
     }
 
     get fun employeeAddress(): Address { // test --
-
         return self.employee_address;
     }
 
     get fun isInitialized(): Bool { // test ++
-
         return self.is_initialized;
     }
 
-    get fun isActive(): Bool { // test ++
-
-        return self.is_active;
+    get fun confirmed(): Bool { // test ++
+        return self.confirmed;
     }
 
     receive(msg: FinishEmployeeContract) { // test ++
         let ctx: Context = context();
         // master contract, company or employee can finish contract
-        require(ctx.sender == self.company_address || ctx.sender == self.employee_address, "only company or employee can finish contract");
-        require(self.is_active, "only active contract can be stopped");// test --
+        require(
+            ctx.sender == self.company_address || // test ++
+            ctx.sender == self.employee_address || // test ++
+            ctx.sender == self.master_contract, // test --
+            "only company, employee or master contract can finish contract"
+        );
+        require(self.confirmed, "only active contract can be finished");// test --
         self.finished_at = now();
         self.is_finished = true;
     }
@@ -120,7 +136,7 @@ contract ContractItem {
         let ctx: Context = context();
         // master contract, company or employee can stop contract
         require(ctx.sender == self.company_address || ctx.sender == self.employee_address, "only company or employee can stop contract");
-        require(self.is_active, "only active contract can be stopped");// test --
+        require(self.confirmed, "only active contract can be stopped");// test --
 
         self.stopped_at = now();
         self.is_stopped = true;

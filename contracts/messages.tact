@@ -33,6 +33,7 @@ message SetContractMasterAddress {
 
 message CompanyComment {
     comment: String;
+    employee_contract: Address?;
 }
 
 message EmployeeComment {
