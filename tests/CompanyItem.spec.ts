@@ -1,10 +1,11 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { toNano } from '@ton/core';
-import { ContractItem } from '../wrappers/ContractItem';
 import '@ton/test-utils';
+import { ContractItem } from '../wrappers/ContractItem';
 import {CompanyItem} from "../build/CompanyItem/tact_CompanyItem";
 import {CompanyMaster} from "../build/CompanyMaster/tact_CompanyMaster";
 import {MasterContract} from "../build/MasterContract/tact_MasterContract";
+import { HRContract } from '../wrappers/HRContract';
 
 describe('CompanyItem', () => {
     let blockchain: Blockchain;
@@ -350,6 +351,7 @@ describe('CompanyItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
+                hr_address: null,
                 company_index: 0n,
                 contract_index: 5n
             }
@@ -402,6 +404,7 @@ describe('CompanyItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
+                hr_address: null,
                 // company_owner: null,
                 company_index: 0n,
                 contract_index: 5n
@@ -448,27 +451,6 @@ describe('CompanyItem', () => {
             success: true,
         });
 
-        // // create company
-        //
-        // const createCompanyRes = await companyMaster.send(
-        //     companyOwner.getSender(),
-        //     {
-        //         value: toNano('0.9'),
-        //     },
-        //     {
-        //         $$type: 'Company',
-        //         post: '',
-        //         description: '',
-        //         index: companyItemIndex
-        //     }
-        // );
-        //
-        // expect(createCompanyRes.transactions).toHaveTransaction({
-        //     from: companyOwner.address,
-        //     to: companyMaster.address,
-        //     success: true,
-        // });
-
         const setCompanyAddressRes = await contractMaster.send(
             deployer.getSender(),
             {
@@ -497,6 +479,7 @@ describe('CompanyItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
+                hr_address: null,
                 // company_owner: null, // set in company_item
                 company_index: 0n,
                 contract_index: contract_index
@@ -624,4 +607,320 @@ describe('CompanyItem', () => {
             success: true,
         });
     });
+
+    it('should company create HR contract; sender is not owner', async () => {
+        const createHRContractRes = await companyItem.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CreateHRContract',
+                company_address: companyItem.address,
+                hr_address: employee.address,
+                company_index: 0n,
+                contract_index: 5n
+            }
+        );
+
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: companyItem.address,
+            success: false,
+            exitCode: 132
+        });
+    });
+    it('should company create HR contract; sender is owner; master contract is not set', async () => {
+        const createHRContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CreateHRContract',
+                company_address: companyItem.address,
+                hr_address: employee.address,
+                company_index: 0n,
+                contract_index: 5n
+            }
+        );
+
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: companyMaster.address,
+            success: false,
+        });
+    });
+
+    it('should company item create HR contract, sender is companyOwner, master contract is set', async () => {
+        const setContractMasterRes = await companyMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'SetContractMasterAddress',
+                contract_master_address: contractMaster.address
+            }
+        );
+
+        expect(setContractMasterRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: companyMaster.address,
+            success: true,
+        });
+
+        const setCompanyAddressRes = await contractMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'SetCompanyMasterAddress',
+                company_master_address: companyMaster.address,
+            }
+        );
+
+        expect(setCompanyAddressRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: contractMaster.address,
+            success: true,
+        });
+
+        const contract_index = 5n;
+
+        const createHRContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CreateHRContract',
+                company_address: companyItem.address,
+                hr_address: employee.address,
+                company_index: 0n,
+                contract_index: contract_index
+            }
+        );
+
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: companyMaster.address,
+            success: true
+        });
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: companyMaster.address,
+            success: true
+        });
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyMaster.address,
+            to: contractMaster.address,
+            success: true
+        });
+
+        const hrContractAddress = await contractMaster.getHrContractAddress(companyItem.address, employee.address, contract_index);
+        let hrContract = blockchain.openContract(HRContract.fromAddress(hrContractAddress));
+
+        expect(await hrContract.getIsInitialized()).toEqual(true);
+        expect(await hrContract.getConfirmed()).toEqual(false);
+        expect(await hrContract.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
+        expect(await hrContract.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 2);
+    });
+
+    // it('should company item create HR contract, sender is companyOwner, master contract is set; foreign company', async () => {
+    //     const setContractMasterRes = await companyMaster.send(
+    //         deployer.getSender(),
+    //         {
+    //             value: toNano('0.1'),
+    //         },
+    //         {
+    //             $$type: 'SetContractMasterAddress',
+    //             contract_master_address: contractMaster.address
+    //         }
+    //     );
+    //
+    //     expect(setContractMasterRes.transactions).toHaveTransaction({
+    //         from: deployer.address,
+    //         to: companyMaster.address,
+    //         success: true,
+    //     });
+    //
+    //     const setCompanyAddressRes = await contractMaster.send(
+    //         deployer.getSender(),
+    //         {
+    //             value: toNano('0.05'),
+    //         },
+    //         {
+    //             $$type: 'SetCompanyMasterAddress',
+    //             company_master_address: companyMaster.address,
+    //         }
+    //     );
+    //
+    //     expect(setCompanyAddressRes.transactions).toHaveTransaction({
+    //         from: deployer.address,
+    //         to: contractMaster.address,
+    //         success: true,
+    //     });
+    //
+    //     const contract_index = 5n;
+    //
+    //     const createHRContractRes = await companyItem.send(
+    //         companyOwner.getSender(),
+    //         {
+    //             value: toNano('0.9'),
+    //         },
+    //         {
+    //             $$type: 'CreateHRContract',
+    //             company_address: companyItem.address,
+    //             hr_address: employee.address,
+    //             company_index: 101n, // correct index is 0n
+    //             contract_index: contract_index
+    //         }
+    //     );
+    //
+    //     expect(createHRContractRes.transactions).toHaveTransaction({
+    //         from: companyOwner.address,
+    //         to: companyItem.address,
+    //         success: true,
+    //     });
+    //     expect(createHRContractRes.transactions).toHaveTransaction({
+    //         from: companyItem.address,
+    //         to: companyMaster.address,
+    //         success: true
+    //     });
+    //     expect(createHRContractRes.transactions).toHaveTransaction({
+    //         from: companyItem.address,
+    //         to: companyMaster.address,
+    //         success: true
+    //     });
+    //     expect(createHRContractRes.transactions).toHaveTransaction({
+    //         from: companyMaster.address,
+    //         to: contractMaster.address,
+    //         success: true
+    //     });
+    //
+    //     const hrContractAddress = await contractMaster.getHrContractAddress(companyItem.address, employee.address, contract_index);
+    //     let hrContract = blockchain.openContract(HRContract.fromAddress(hrContractAddress));
+    //
+    //     expect(await hrContract.getIsInitialized()).toEqual(true);
+    //     expect(await hrContract.getConfirmed()).toEqual(false);
+    //     expect(await hrContract.getCreatedAt()).toBeLessThan(Date.now()/1000 + 2);
+    //     expect(await hrContract.getCreatedAt()).toBeGreaterThan(Date.now()/1000 - 2);
+    // });
+
+
+
+
+
+    it('should company item create hr contract; sender is companyOwner; master contract is set; master company is not set', async () => {
+        // // set contract master
+        const setContractMasterRes = await companyMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'SetContractMasterAddress',
+                contract_master_address: contractMaster.address
+            }
+        );
+
+        expect(setContractMasterRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: companyMaster.address,
+            success: true,
+        });
+
+        const contract_index = 5n;
+
+        const createHRContractRes = await companyItem.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CreateHRContract',
+                company_address: companyItem.address,
+                hr_address: employee.address,
+                company_index: 0n,
+                contract_index: contract_index
+            }
+        );
+
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: companyItem.address,
+            success: true,
+        });
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: companyMaster.address,
+            success: true
+        });
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyItem.address,
+            to: companyMaster.address,
+            success: true
+        });
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyMaster.address,
+            to: contractMaster.address,
+            success: false,
+            exitCode: 54292
+        });
+    });
+
+    it('should company item create HR contract; sender is not company master', async () => {
+        const setCompanyAddressRes = await contractMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+            {
+                $$type: 'SetCompanyMasterAddress',
+                company_master_address: companyMaster.address,
+            }
+        );
+
+        expect(setCompanyAddressRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: contractMaster.address,
+            success: true,
+        });
+
+        const contract_index = 5n;
+
+        const createHRContractRes = await contractMaster.send(
+            companyOwner.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CreateHRContract',
+                company_address: companyItem.address,
+                hr_address: employee.address,
+                company_index: 0n,
+                contract_index: contract_index
+            }
+        );
+
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: companyOwner.address,
+            to: contractMaster.address,
+            success: false,
+            exitCode: 63123
+        });
+    });
+
 });

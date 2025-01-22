@@ -80,6 +80,36 @@ contract CompanyMaster with Deployable, OwnableTransferable {
         }
     }
 
+    receive(msg: CreateHRContract) {
+        // check sender is company
+        let ctx: Context = context();
+//        require(self.companyAddressByOwner(msg.company_address, msg.index) == ctx.sender, "only company can call CreateContract method");
+        require(self.companyAddressByIndex(msg.company_index) == ctx.sender, "only company can call CreateContract method"); // test ++
+
+        // if change owner, function companyAddressByOwner not work right; ONLY INDEX!!!
+        require(ctx.sender == msg.company_address, "you can not create contract for foreign company"); // test --
+
+        if (self.contract_master_address != null) {
+            let msgValue: Int = context().value;
+            msgValue = msgValue - (gasConsumption + minTonsForStorage);
+//            dump(msgValue);
+            send(SendParameters{
+                to: self.contract_master_address!!,
+                value: msgValue,
+                bounce: false,
+                mode: SendIgnoreErrors,
+                //            mode: SendBounceIfActionFail,
+                body: msg.toCell()
+            });
+            self.next_item_index = self.next_item_index + 1;
+        } else {
+            // return coins to sender
+//            nativeThrow(1);
+            require(false, "contract_master_address is not set");
+//            return;
+        }
+    }
+
 //    get fun companyItemInit(sender_address: Address, company_index: Int): StateInit {
     get fun companyItemInit(next_item_index: Int): StateInit {
         return initOf CompanyItem(myAddress(), next_item_index); // duplicate this for checking that company is item of company master

@@ -12,7 +12,7 @@ describe('CompanyMaster', () => {
     let deployer: SandboxContract<TreasuryContract>;
     let companyOwner: SandboxContract<TreasuryContract>;
     let notOwner: SandboxContract<TreasuryContract>;
-    let employer: SandboxContract<TreasuryContract>;
+    let employee: SandboxContract<TreasuryContract>;
     let companyMaster: SandboxContract<CompanyMaster>;
     let contractMaster: SandboxContract<MasterContract>;
 
@@ -22,7 +22,7 @@ describe('CompanyMaster', () => {
         deployer = await blockchain.treasury('deployer');
         companyOwner = await blockchain.treasury('owner');
         notOwner = await blockchain.treasury('notOwner');
-        employer = await blockchain.treasury('employer');
+        employee = await blockchain.treasury('employer');
 
         companyMaster = blockchain.openContract(await CompanyMaster.fromInit(0n));
 
@@ -241,6 +241,74 @@ describe('CompanyMaster', () => {
         contractMasterAddressAfter = await companyMaster.getContractMasterAddress();
 
         expect(contractMasterAddressAfter!.toString()).toEqual(contractMaster.address.toString());
+    });
+
+    it('should company master; create HR contract; call not company', async () => {
+        await companyMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'SetContractMasterAddress',
+                contract_master_address: contractMaster.address
+            }
+        );
+
+        const createHRContractRes = await companyMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CreateHRContract',
+                company_address: deployer.address,
+                hr_address: employee.address,
+                company_index: 0n,
+                contract_index: 5n
+            }
+        );
+
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: companyMaster.address,
+            success: false,
+            exitCode: 3281
+        });
+    });
+
+    it('should company master; create HR contract; call foreign company', async () => {
+        await companyMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'SetContractMasterAddress',
+                contract_master_address: contractMaster.address
+            }
+        );
+
+        const createHRContractRes = await companyMaster.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.9'),
+            },
+            {
+                $$type: 'CreateHRContract',
+                company_address: deployer.address,
+                hr_address: employee.address,
+                company_index: 0n,
+                contract_index: 5n
+            }
+        );
+
+        expect(createHRContractRes.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: companyMaster.address,
+            success: false,
+            exitCode: 3281
+        });
     });
 
 

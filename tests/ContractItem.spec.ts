@@ -144,7 +144,7 @@ describe('ContractItem', () => {
                 $$type: 'CreateContract',
                 company_address: companyItem.address,
                 employee_address: employee.address,
-                // company_owner: null, // set in company_item
+                hr_address: null,
                 company_index: 0n,
                 contract_index: contract_index
             }

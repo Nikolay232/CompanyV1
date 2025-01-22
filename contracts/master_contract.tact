@@ -1,6 +1,7 @@
 import "@stdlib/deploy";
 import "@stdlib/ownable";
 import "./contract_item.tact";
+import "./h_r_contract.tact";
 //import "./company_item.tact";
 
 contract MasterContract with Deployable, Ownable {
@@ -26,28 +27,63 @@ contract MasterContract with Deployable, Ownable {
     }
 
     receive(msg: CreateContract) {
+        require(self.company_master_address != null, "company_master_address is not set");
+
         let ctx: Context = context();
-        if (self.company_master_address != null) {
-            require(ctx.sender == self.company_master_address, "only company_master can call this method");
-            // mint contract item
 
-            //        require(ctx.sender == msg.companyAddress, "initialized tx need from collection");
-            let contract_init: StateInit = self.getContractItemInit(msg);
-            let msgValue: Int = context().value;
-            msgValue = msgValue - (self.gasConsumption + self.minTonsForStorage);
+        require(ctx.sender == self.company_master_address, "only company_master can call this method");
+        // OR IS HR; check hr address by copany address, hr_address, hr_contract_index(add to msg)
+        // mint contract item
 
-            send(SendParameters{
-                to: contractAddress(contract_init),
-                value: msgValue,
-                bounce: false,
-                mode: SendIgnoreErrors,
-                //            mode: SendBounceIfActionFail,
-                body: msg.toCell(),
-                code: contract_init.code,
-                data: contract_init.data
-            });
-        }
+        let contract_init: StateInit = self.getContractItemInit(msg);
+        let msgValue: Int = context().value;
+        msgValue = msgValue - (self.gasConsumption + self.minTonsForStorage);
+
+        send(SendParameters{
+            to: contractAddress(contract_init),
+            value: msgValue,
+            bounce: false,
+            mode: SendIgnoreErrors,
+            //            mode: SendBounceIfActionFail,
+            body: msg.toCell(),
+            code: contract_init.code,
+            data: contract_init.data
+        });
     }
+
+
+//    receive(msg: CreateContractFromHR) {
+//        //        require(self.company_master_address != null, "company_master_address is not set");
+//
+//        let ctx: Context = context();
+//
+//        require(ctx.sender == self.hrContractAddress(msg.company_address, msg.hr_address, msg.hr_contract_index), "only HR can call this method");
+//        // OR IS HR; check hr address by copany address, hr_address, hr_contract_index(add to msg)
+//        // mint contract item
+//
+//        let createContractMsg: CreateContract = CreateContract{
+//        company_address: msg.company_address,
+//        hr_address: msg.hr_address,
+//        employee_address: msg.employee_address,
+//        company_index: msg.company_index,
+//        contract_index: msg.contract_index
+//        };
+//
+//        let contract_init: StateInit = self.getContractItemInit(createContractMsg);
+//        let msgValue: Int = context().value;
+//        msgValue = msgValue - (self.gasConsumption + self.minTonsForStorage);
+//
+//        send(SendParameters{
+//        to: contractAddress(contract_init),
+//        value: msgValue,
+//        bounce: false,
+//        mode: SendIgnoreErrors,
+//        //            mode: SendBounceIfActionFail,
+//        body: createContractMsg.toCell(),
+//        code: contract_init.code,
+//        data: contract_init.data
+//        });
+//    }
 
     get fun getContractItemInit(msg: CreateContract): StateInit {
         return initOf ContractItem(myAddress(), msg.company_address, msg.employee_address, msg.contract_index); // duplicate this for checking that company is item of company master
@@ -58,6 +94,47 @@ contract MasterContract with Deployable, Ownable {
             CreateContract{
                 company_address: company_address,
                 employee_address: employee_address,
+                company_index: 0,
+                contract_index: contract_index
+            }
+        );
+
+        return contractAddress(initCode);
+    }
+
+    receive(msg: CreateHRContract) {
+        require(self.company_master_address != null, "company_master_address is not set"); // test ++
+
+        let ctx: Context = context();
+
+        require(ctx.sender == self.company_master_address, "only company_master can call this method"); // test ++
+
+        // mint contract item
+        let contract_init: StateInit = self.getHRContractInit(msg);
+        let msgValue: Int = context().value;
+        msgValue = msgValue - (self.gasConsumption + self.minTonsForStorage);
+
+        send(SendParameters{
+            to: contractAddress(contract_init),
+            value: msgValue,
+            bounce: false,
+            mode: SendIgnoreErrors,
+            //            mode: SendBounceIfActionFail,
+            body: msg.toCell(),
+            code: contract_init.code,
+            data: contract_init.data
+        });
+    }
+
+    get fun getHRContractInit(msg: CreateHRContract): StateInit {
+        return initOf HRContract(myAddress(), msg.company_address, msg.hr_address, msg.contract_index); // duplicate this for checking that company is item of company master
+    }
+
+    get fun hrContractAddress(company_address: Address, hr_address: Address, contract_index: Int): Address {
+        let initCode: StateInit = self.getHRContractInit(
+            CreateHRContract{
+                company_address: company_address,
+                hr_address: hr_address,
                 company_index: 0,
                 contract_index: contract_index
             }

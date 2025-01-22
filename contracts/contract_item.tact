@@ -6,12 +6,12 @@ contract ContractItem {
     master_contract: Address;
 
     company_address: Address;
-    // HR_address: Address;???
+    hr_address: Address?;
     employee_address: Address;
     // employee_telegram_id
     // index ???
     index: Int; // timestamp??
-    owner: Address?;
+//    owner: Address?;
 
     company_comment: String?;
     employee_comment: String?;
@@ -44,19 +44,12 @@ contract ContractItem {
 
         if (self.is_initialized == false) {
             self.is_initialized = true;
-            self.owner = ctx.sender;
+//            self.owner = ctx.sender;
             self.company_address = msg.company_address;
+            self.hr_address = msg.hr_address; // test
             self.employee_address = msg.employee_address;
             self.created_at = now(); // test ++
 
-            //            if (msg.response_destination != null) {
-            //                send(SendParameters{
-            //                    to: msg.response_destination!!,
-            //                    value: msgValue,
-            //                    mode: SendPayGasSeparately,
-            //                    body: Excesses { query_id: msg.query_id }.toCell()
-            //                });
-            //            }
         }
 //        else {
 //            // return coins to sender???

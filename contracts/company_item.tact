@@ -114,6 +114,34 @@ contract CompanyItem {
         });
     }
 
+    receive(msg: CreateHRContract) { // test ++
+        let ctx: Context = context();
+
+//        require(ctx.sender == self.owner, "CreateContract can call only owner");
+        self.requireOwner(); // test ++
+        // test TrustedPerson
+        // test coowner
+
+        let msgValue: Int = context().value;
+        msgValue = msgValue - gasConsumption;
+//        let master_contract: StateInit =  initOf MasterContract(myAddress(), sender_address);
+//        let company_init: StateInit = self.MasterContract(sender());
+        send(SendParameters{
+            to: self.master_contract,
+            value: msgValue,
+            bounce: false,
+            mode: SendIgnoreErrors,
+            //            mode: SendBounceIfActionFail,
+            body: CreateHRContract {
+                company_address: myAddress(),
+                hr_address: msg.hr_address,
+//                company_owner: self.owner,
+                company_index: self.item_index,
+                contract_index: msg.contract_index
+            }.toCell()
+        });
+    }
+
     receive(msg: AddTrustedPerson) {
         // tests ++
         // set not owner ++

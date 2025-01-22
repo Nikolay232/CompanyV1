@@ -13,8 +13,24 @@ message Transfer {
 
 message CreateContract {
     company_address: Address;
+    hr_address: Address?;
     employee_address: Address;
-//    company_owner: Address?;
+    company_index: Int;
+    contract_index: Int;
+}
+
+message CreateContractFromHR {
+    company_address: Address;
+    hr_address: Address;
+    employee_address: Address;
+    company_index: Int;
+    hr_contract_index: Int;
+    contract_index: Int;
+}
+
+message CreateHRContract {
+    company_address: Address;
+    hr_address: Address;
     company_index: Int;
     contract_index: Int;
 }
